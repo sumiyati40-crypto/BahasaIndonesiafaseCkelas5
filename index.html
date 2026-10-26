@@ -1,0 +1,397 @@
+/* ==========================================================================
+   LOGIKA INTERAKTIF MEDIA PEMBELAJARAN "BUKU JENDELA DUNIA"
+   ========================================================================== */
+
+// STATE APLIKASI
+let studentName = "Tamu";
+let currentQuizIndex = 0;
+let userQuizAnswers = {};
+let quizScore = 0;
+
+// BANK SOAL KUIS EVALUASI (10 SOAL OBJEKTIF & MULTI-ELEMEN)
+const quizData = [
+  {
+    type: "mc",
+    question: "1. Mengapa buku sering dijuluki sebagai 'Jendela Dunia'?",
+    options: [
+      "Karena bentuk buku menyerupai jendela rumah.",
+      "Karena melalui membaca buku kita dapat memperoleh pengetahuan dari seluruh dunia.",
+      "Karena buku hanya bisa dibaca di dekat jendela.",
+      "Karena buku terbuat dari kaca transparan."
+    ],
+    answer: 1
+  },
+  {
+    type: "mc",
+    question: "2. Langkah pertama yang tepat untuk menentukan ide pokok suatu paragraf adalah...",
+    options: [
+      "Menghitung jumlah kata dalam paragraf.",
+      "Membaca seluruh isi paragraf secara cermat.",
+      "Menulis ulang seluruh kalimat.",
+      "Mengabaikan kalimat pertama dan terakhir."
+    ],
+    answer: 1
+  },
+  {
+    type: "tf",
+    question: "3. (Benar/Salah) Menyimak aktif berarti kita mendengarkan informasi sambil melakukan kegiatan lain yang merusak konsentrasi.",
+    options: ["Benar", "Salah"],
+    answer: 1
+  },
+  {
+    type: "mc",
+    question: "4. Saat menyampaikan presentasi buku di depan kelas, sikap yang baik adalah...",
+    options: [
+      "Berbicara berbisik-bisik dan menunduk.",
+      "Membaca seluruh teks tanpa melihat audiens.",
+      "Berdiri tegak, suara jelas, dan percaya diri.",
+      "Lari meninggalkan panggung karena malu."
+    ],
+    answer: 2
+  },
+  {
+    type: "mc",
+    question: "5. Manakah di bawah ini yang merupakan penggunaan huruf kapital yang benar?",
+    options: [
+      "sdn 1 sukamaju berada di kota bandung.",
+      "SDN 1 Sukamaju berada di Kota Bandung.",
+      "sdn 1 Sukamaju Berada Di kota Bandung.",
+      "Sdn 1 sukamaju Berada di Kota bandung."
+    ],
+    answer: 1
+  },
+  {
+    type: "tf",
+    question: "6. (Benar/Salah) Menulis ringkasan bertujuan untuk mengambil poin-poin penting tanpa mengubah inti isi bacaan.",
+    options: ["Benar", "Salah"],
+    answer: 0
+  },
+  {
+    type: "mc",
+    question: "7. Berikut ini yang BUKAN merupakan manfaat utama dari membaca buku secara rutin adalah...",
+    options: [
+      "Menambah wawasan dan kosakata baru.",
+      "Melatih konsentrasi dan imajinasi.",
+      "Membuat mata menjadi cepat lelah tanpa manfaat.",
+      "Meningkatkan kemampuan berpikir kritis."
+    ],
+    answer: 2
+  },
+  {
+    type: "mc",
+    question: "8. Dalam menyusun kerangka presentasi ulasan buku, hal pertama yang disampaikan adalah...",
+    options: [
+      "Judul buku dan nama penulis.",
+      "Harga beli buku di toko.",
+      "Kesimpulan akhir cerita saja.",
+      "Daftar pustaka tambahan."
+    ],
+    answer: 0
+  },
+  {
+    type: "mc",
+    question: "9. Tanda baca yang digunakan untuk mengakhiri kalimat berita yang lengkap adalah...",
+    options: ["Tanda Tanya (?)", "Tanda Seru (!)", "Tanda Titik (.)", "Tanda Koma (,)"],
+    answer: 2
+  },
+  {
+    type: "tf",
+    question: "10. (Benar/Salah) Rekomendasi buku berisi saran dan alasan mengapa orang lain perlu membaca buku tersebut.",
+    options: ["Benar", "Salah"],
+    answer: 0
+  }
+];
+
+// INITIALIZATION SAAT HALAMAN DIMUAT
+document.addEventListener("DOMContentLoaded", () => {
+  loadStoredData();
+  renderQuiz();
+  updateProgressBar();
+});
+
+// SYSTEM NAVIGASI SPA
+function switchPage(pageId) {
+  const pages = document.querySelectorAll(".page-section");
+  const navBtns = document.querySelectorAll(".nav-btn");
+
+  pages.forEach(p => p.classList.remove("active"));
+  navBtns.forEach(b => b.classList.remove("active"));
+
+  const targetPage = document.getElementById(`page-${pageId}`);
+  if (targetPage) {
+    targetPage.classList.add("active");
+  }
+
+  // Update button active style
+  const activeBtn = Array.from(navBtns).find(b => b.getAttribute("onclick").includes(pageId));
+  if (activeBtn) activeBtn.classList.add("active");
+
+  updateProgressBar();
+  if (pageId === "rekap") updateRekapDisplay();
+}
+
+// PROGRES BELAJAR CALCULATOR
+function updateProgressBar() {
+  let progress = 15; // default beranda
+  if (localStorage.getItem("studentName")) progress += 15;
+  if (localStorage.getItem("speechOutline")) progress += 20;
+  if (localStorage.getItem("writingData")) progress += 20;
+  if (localStorage.getItem("quizFinished")) progress += 20;
+  if (localStorage.getItem("refleksiData")) progress += 10;
+
+  progress = Math.min(progress, 100);
+  document.getElementById("progressFill").style.width = `${progress}%`;
+  document.getElementById("progressText").innerText = `${progress}%`;
+}
+
+// MANAGEMENT NAMA SISWA & LOCALSTORAGE
+function saveStudentName() {
+  const input = document.getElementById("studentNameInput").value.trim();
+  if (input) {
+    studentName = input;
+    localStorage.setItem("studentName", studentName);
+    document.getElementById("displayName").innerText = studentName;
+    alert(`Selamat datang, ${studentName}! Mari mulai belajar.`);
+    switchPage("tujuan");
+  } else {
+    alert("Silakan masukkan namamu terlebih dahulu.");
+  }
+}
+
+function loadStoredData() {
+  const storedName = localStorage.getItem("studentName");
+  if (storedName) {
+    studentName = storedName;
+    document.getElementById("displayName").innerText = studentName;
+    document.getElementById("studentNameInput").value = studentName;
+  }
+}
+
+// MATERI TABS CONTROL
+function openMateriTab(evt, tabId) {
+  const tabContents = document.querySelectorAll(".tab-content");
+  const tabBtns = document.querySelectorAll(".tab-btn");
+
+  tabContents.forEach(tc => tc.classList.remove("active"));
+  tabBtns.forEach(tb => tb.classList.remove("active"));
+
+  document.getElementById(tabId).classList.add("active");
+  evt.currentTarget.classList.add("active");
+}
+
+// AKTIVITAS KEGIATAN: CHECK DIRECT ANSWER
+function checkAnswerDirect(btnElement, isCorrect) {
+  const parent = btnElement.parentElement;
+  const feedback = parent.querySelector(".feedback-text");
+
+  if (isCorrect) {
+    feedback.innerText = "🎉 Hebat! Jawabanmu tepat sekali!";
+    feedback.className = "feedback-text correct";
+  } else {
+    feedback.innerText = "💡 Ayo coba lagi! Cermati kembali informasi bacaannya.";
+    feedback.className = "feedback-text wrong";
+  }
+}
+
+// TEXT-TO-SPEECH (WEB SPEECH API FOR LISTENING)
+function playTextToSpeech() {
+  const text = document.getElementById("listeningText").innerText;
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); // Reset
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'id-ID';
+    utterance.rate = 0.9; // Kecepatan nyaman anak SD
+    window.speechSynthesis.speak(utterance);
+  } else {
+    alert("Maaf, browser ini tidak mendukung fitur Text-to-Speech lisan. Silakan baca teks yang telah disediakan.");
+  }
+}
+
+function pauseTextToSpeech() {
+  if ('speechSynthesis' in window) window.speechSynthesis.pause();
+}
+
+function stopTextToSpeech() {
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+// FORMS: SPEECH & WRITING
+function saveSpeechOutline() {
+  const data = {
+    title: document.getElementById("spTitle").value,
+    summary: document.getElementById("spSummary").value,
+    reason: document.getElementById("spReason").value
+  };
+  localStorage.setItem("speechOutline", JSON.stringify(data));
+  document.getElementById("speechFeedback").innerText = "✅ Kerangka presentasi berhasil disimpan!";
+  updateProgressBar();
+}
+
+function saveWritingData() {
+  const text = document.getElementById("userWriting").value;
+  localStorage.setItem("writingData", text);
+
+  // Self Check Automated Review
+  const reviewBox = document.getElementById("writingReviewBox");
+  const list = document.getElementById("writingChecklist");
+  list.innerHTML = "";
+
+  const hasCapital = /^[A-Z]/.test(text.trim());
+  const hasPeriod = text.includes(".");
+  const lengthValid = text.trim().length >= 30;
+
+  list.innerHTML += `<li>${hasCapital ? '✅' : '❌'} Diakhiri/diawali aturan kapital yang baik.</li>`;
+  list.innerHTML += `<li>${hasPeriod ? '✅' : '❌'} Menggunakan tanda titik untuk mengakhiri kalimat.</li>`;
+  list.innerHTML += `<li>${lengthValid ? '✅' : '❌'} Panjang paragraf mencukupi.</li>`;
+
+  reviewBox.style.display = "block";
+  updateProgressBar();
+}
+
+// LOGIKA KUIS EVALUASI
+function renderQuiz() {
+  const body = document.getElementById("quizBody");
+  const q = quizData[currentQuizIndex];
+
+  document.getElementById("quizCounter").innerText = `Soal ${currentQuizIndex + 1} dari ${quizData.length}`;
+  document.getElementById("quizScoreRealtime").innerText = `Terjawab: ${Object.keys(userQuizAnswers).length}`;
+
+  let optionsHtml = "";
+  q.options.forEach((opt, idx) => {
+    const isSelected = userQuizAnswers[currentQuizIndex] === idx;
+    optionsHtml += `
+      <button class="btn btn-opt ${isSelected ? 'btn-primary' : ''}" onclick="selectQuizAnswer(${idx})">
+        ${String.fromCharCode(65 + idx)}. ${opt}
+      </button>
+    `;
+  });
+
+  body.innerHTML = `
+    <h4>${q.question}</h4>
+    <div style="margin-top:15px;">${optionsHtml}</div>
+  `;
+
+  // Control Navigation Buttons
+  document.getElementById("btnPrevQuiz").disabled = currentQuizIndex === 0;
+  if (currentQuizIndex === quizData.length - 1) {
+    document.getElementById("btnNextQuiz").style.display = "none";
+    document.getElementById("btnSubmitQuiz").style.display = "inline-block";
+  } else {
+    document.getElementById("btnNextQuiz").style.display = "inline-block";
+    document.getElementById("btnSubmitQuiz").style.display = "none";
+  }
+}
+
+function selectQuizAnswer(optionIdx) {
+  userQuizAnswers[currentQuizIndex] = optionIdx;
+  renderQuiz();
+}
+
+function navigateQuiz(direction) {
+  currentQuizIndex += direction;
+  renderQuiz();
+}
+
+function finishQuiz() {
+  if (Object.keys(userQuizAnswers).length < quizData.length) {
+    if (!confirm("Masih ada soal yang belum dijawab. Yakin ingin menyelesaikan kuis?")) return;
+  }
+
+  let correctCount = 0;
+  quizData.forEach((q, idx) => {
+    if (userQuizAnswers[idx] === q.answer) correctCount++;
+  });
+
+  quizScore = Math.round((correctCount / quizData.length) * 100);
+
+  localStorage.setItem("quizScore", quizScore);
+  localStorage.setItem("quizFinished", "true");
+
+  document.getElementById("quizContainer").style.display = "none";
+  const resBox = document.getElementById("quizResultBox");
+  resBox.style.display = "block";
+
+  document.getElementById("finalScoreDisplay").innerText = quizScore;
+  document.getElementById("correctCount").innerText = correctCount;
+
+  let msg = "Kamu luar biasa! Pertahankan semangat membaca dan belajarmu.";
+  if (quizScore < 70) msg = "Jangan berkecil hati! Ayo baca lagi materinya dan coba kembali.";
+  document.getElementById("scoreMessage").innerText = msg;
+
+  updateProgressBar();
+}
+
+function resetQuiz() {
+  userQuizAnswers = {};
+  currentQuizIndex = 0;
+  document.getElementById("quizResultBox").style.display = "none";
+  document.getElementById("quizContainer").style.display = "block";
+  renderQuiz();
+}
+
+// REFLEKSI
+function saveRefleksi() {
+  const rData = {
+    q1: document.getElementById("ref1").value,
+    q2: document.getElementById("ref2").value,
+    q3: document.getElementById("ref3").value,
+    q4: document.getElementById("ref4").value
+  };
+  localStorage.setItem("refleksiData", JSON.stringify(rData));
+  document.getElementById("refleksiStatus").innerText = "✅ Refleksi berhasil disimpan!";
+  updateProgressBar();
+}
+
+// UPDATE DISPLAY REKAP & GURU
+function updateRekapDisplay() {
+  document.getElementById("rkNama").innerText = localStorage.getItem("studentName") || "Tamu";
+  document.getElementById("rkNilaiKuis").innerText = localStorage.getItem("quizScore") || "0";
+
+  // Speech Data
+  const spRaw = localStorage.getItem("speechOutline");
+  if (spRaw) {
+    const sp = JSON.parse(spRaw);
+    document.getElementById("rkSpeechText").innerHTML = `
+      <strong>Judul Buku:</strong> ${sp.title}<br>
+      <strong>Ringkasan:</strong> ${sp.summary}<br>
+      <strong>Alasan:</strong> ${sp.reason}
+    `;
+  }
+
+  // Writing Data
+  const wrRaw = localStorage.getItem("writingData");
+  if (wrRaw) {
+    document.getElementById("rkWritingText").innerText = wrRaw;
+  }
+
+  // Refleksi Data
+  const refRaw = localStorage.getItem("refleksiData");
+  if (refRaw) {
+    const rf = JSON.parse(refRaw);
+    document.getElementById("rkRefleksiText").innerHTML = `
+      1. Pengetahuan baru: ${rf.q1}<br>
+      2. Kegiatan disukai: ${rf.q2}<br>
+      3. Bagian sulit: ${rf.q3}<br>
+      4. Buku berikutnya: ${rf.q4}
+    `;
+  }
+}
+
+// EXPORT REKAP KE CSV
+function exportToCSV() {
+  const name = localStorage.getItem("studentName") || "Siswa";
+  const score = localStorage.getItem("quizScore") || "0";
+  const notes = document.getElementById("teacherGeneralNotes").value.replace(/,/g, " ");
+
+  let csvContent = "data:text/csv;charset=utf-8,";
+  csvContent += "Nama Siswa,Nilai Kuis Objektif,Catatan Guru\n";
+  csvContent += `"${name}","${score}","${notes}"\n`;
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `Rekap_Belajar_${name.replace(/\s+/g, '_')}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
